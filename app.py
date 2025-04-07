@@ -14,15 +14,15 @@ FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
 # Initialize Azure OpenAI client for embeddings
 client = AzureOpenAI(
-  api_key=AZURE_OPENAI_KEY,
-  api_version="2024-02-01",
-  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
+ api_key=AZURE_OPENAI_KEY,
+ api_version="2024-02-01",
+ azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
 )
 # Initialize Azure OpenAI client for chat completions
 chat_client = AzureOpenAI(
-  api_key=AZURE_OPENAI_KEY,
-  api_version="2024-02-01",
-  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+ api_key=AZURE_OPENAI_KEY,
+ api_version="2024-02-01",
+ azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
 )
 # === FAISS STORE ===
 class FAISSStore:
@@ -90,6 +90,8 @@ with st.sidebar:
            embeddings = [get_embedding(chunk) for chunk in chunks if chunk.strip()]
            faiss_store.add_embeddings(chunks, embeddings)
            st.success("✅ PDF processed and stored in FAISS!")
+       # Remove the file from the user uploaded input
+       uploaded_file = None
 # Initialize session state for chat history if not already set
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
