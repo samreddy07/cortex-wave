@@ -14,27 +14,27 @@ FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
 # Initialize Azure OpenAI client for embeddings
 client = AzureOpenAI(
- api_key=AZURE_OPENAI_KEY,
- api_version="2024-02-01",
- azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
+   api_key=AZURE_OPENAI_KEY,
+   api_version="2024-02-01",
+   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
 )
 # Initialize Azure OpenAI client for chat completions
 chat_client = AzureOpenAI(
- api_key=AZURE_OPENAI_KEY,
- api_version="2024-02-01",
- azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+   api_key=AZURE_OPENAI_KEY,
+   api_version="2024-02-01",
+   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
 )
 # === FAISS STORE ===
 class FAISSStore:
    def __init__(self, embedding_dim=1536):
        self.embedding_dim = embedding_dim
        self.index = faiss.IndexFlatL2(self.embedding_dim)  # L2 distance search
-       self.metadata = []  # Stores text chunks
+       self.metadata = []
        # Load existing index if available
        if os.path.exists(FAISS_INDEX_PATH):
            self.load_index()
    def add_embeddings(self, texts, embeddings):
-       """Adds text chunks & embeddings to FAISS"""
+       """Adds text chunks & embeddings to FAISS."""
        if not embeddings:
            return
        vectors = np.array(embeddings).astype("float32")
@@ -42,18 +42,18 @@ class FAISSStore:
        self.metadata.extend(texts)
        self.save_index()
    def search(self, query_embedding, top_k=3):
-       """Searches FAISS for the closest text chunks"""
+       """Searches FAISS for the closest text chunks."""
        query_vector = np.array(query_embedding).astype("float32").reshape(1, -1)
        distances, indices = self.index.search(query_vector, top_k)
        results = [self.metadata[idx] for idx in indices[0] if idx < len(self.metadata)]
        return results
    def save_index(self):
-       """Save FAISS index & metadata to disk"""
+       """Save FAISS index & metadata to disk."""
        faiss.write_index(self.index, FAISS_INDEX_PATH)
        with open(FAISS_METADATA_PATH, "w") as f:
            json.dump(self.metadata, f)
    def load_index(self):
-       """Load FAISS index & metadata from disk"""
+       """Load FAISS index & metadata from disk."""
        self.index = faiss.read_index(FAISS_INDEX_PATH)
        with open(FAISS_METADATA_PATH, "r") as f:
            self.metadata = json.load(f)
@@ -81,7 +81,8 @@ st.title("📄 PDF Q&A Chatbot using FAISS and Azure OpenAI")
 # Move PDF uploader to the sidebar
 with st.sidebar:
    st.header("Upload PDF")
-   uploaded_file = st.file_uploader("Select a PDF file", type=["pdf"])
+   # Give the uploader a key so we can reset it if needed
+   uploaded_file = st.file_uploader("Select a PDF file", type=["pdf"], key="pdf_uploader")
    if uploaded_file:
        with st.spinner("🔍 Processing PDF..."):
            text = extract_text_from_pdf(uploaded_file)
@@ -90,12 +91,12 @@ with st.sidebar:
            embeddings = [get_embedding(chunk) for chunk in chunks if chunk.strip()]
            faiss_store.add_embeddings(chunks, embeddings)
            st.success("✅ PDF processed and stored in FAISS!")
-       # Remove the file from the user uploaded input
-       uploaded_file = None
+       # Force a rerun to clear the file uploader
+       st.experimental_rerun()
 # Initialize session state for chat history if not already set
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
-# Chat interface using ChatGPT-like UI components
+# Chat interface
 st.header("Chat with your PDF")
 user_input = st.chat_input("Ask a question:")
 if user_input:
