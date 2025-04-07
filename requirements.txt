@@ -1,0 +1,7 @@
+streamlit
+PyPDF2
+db-sqlite3
+altair==4.1.0
+openai
+azure-core
+faiss-cpu
