@@ -90,7 +90,7 @@ def get_embedding(text):
    return response.data[0].embedding
 # === Streamlit App ===
 st.set_page_config(page_title="Cortex Waves", layout="wide")
-st.header("Cortex Waves: ChatBOT for Wiki and Document Exploration")
+st.header("Cortex Waves")
 # FAISS init
 if "faiss_store" not in st.session_state:
    st.session_state.faiss_store = FAISSStore()
