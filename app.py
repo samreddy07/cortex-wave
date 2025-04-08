@@ -78,7 +78,7 @@ st.set_page_config(page_title="Cortex Wave", layout="wide")
 # st.title("Cortex Wave: AI for Wiki and Document Exploration")
 # === Sidebar: PDF Upload & Reset ===
 with st.sidebar:
-   st.header("Vector data store creation")
+   st.header("Data store")
    uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
