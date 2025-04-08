@@ -1,11 +1,9 @@
 import streamlit as st
 import faiss
-import wikipediaapi
 import numpy as np
 import json
 import os
 import PyPDF2
-from sentence_transformers import SentenceTransformer
 from openai import AzureOpenAI
 # === CONFIGURATION ===
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "85015946c55b4763bcc88fc4db9071dd")
@@ -13,12 +11,7 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT
 AZURE_OPENAI_COMPLETION_DEPLOYMENT = os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-4o-mini")
 FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
-MODEL_NAME = "all-MiniLM-L6-v2"
-# === Load embedding model ===
-# @st.cache_resource
-def load_model():
-   return SentenceTransformer(MODEL_NAME)
-model = load_model()
+
 # === Azure OpenAI Clients ===
 # Initialize Azure OpenAI client for embeddings
 client = AzureOpenAI(
@@ -76,26 +69,6 @@ def extract_text_from_pdf(pdf_file):
        if page_text:
            text += page_text + "\n"
    return text
-# === Helpers ===
-def chunk_text(text, max_length=500):
-   sentences = text.split(". ")
-   chunks = []
-   current_chunk = ""
-   for sentence in sentences:
-       if len(current_chunk) + len(sentence) < max_length:
-           current_chunk += sentence + ". "
-       else:
-           chunks.append(current_chunk.strip())
-           current_chunk = sentence + ". "
-   if current_chunk:
-       chunks.append(current_chunk.strip())
-   return chunks
-def fetch_wikipedia_content(title):
-   wiki_wiki = wikipediaapi.Wikipedia("en")
-   page = wiki_wiki.page(title)
-   if not page.exists():
-       return None
-   return page.text
 def get_embedding(text):
    response = client.embeddings.create(
        input=text,
@@ -103,14 +76,14 @@ def get_embedding(text):
    )
    return response.data[0].embedding
 # === Streamlit App ===
-st.set_page_config(page_title="Cortex Wave", layout="wide")
-st.title("Cortex Wave: AI for Wiki and Document Exploration")
+st.set_page_config(page_title="Cortex Waves", layout="wide")
+st.title("Cortex Waves: ChatBOT for Wiki and Document Exploration")
 # FAISS init
 if "faiss_store" not in st.session_state:
    st.session_state.faiss_store = FAISSStore()
 # Sidebar
 with st.sidebar:
-   st.header("Data Loader")
+   st.header("Data Source")
    if st.button("🔄 Reset All"):
        st.session_state.faiss_store.clear()
        st.session_state.clear()
@@ -124,16 +97,6 @@ with st.sidebar:
            st.session_state.faiss_store.add_embeddings(chunks, embeddings)
            st.session_state.pdf_processed = True
            st.success("✅ PDF processed and added to FAISS!")
-   wiki_url = st.text_input("Wikipedia URL")
-   if wiki_url and not st.session_state.get("wiki_processed", False):
-       with st.spinner("Processing Wikipedia..."):
-           wiki_text = fetch_wikipedia_content(wiki_url)
-           if wiki_text:
-               wiki_chunks = chunk_text(wiki_text)
-               wiki_embeddings = model.encode(wiki_chunks)
-               st.session_state.faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
-               st.session_state.wiki_processed = True
-               st.success("✅ Wikipedia content added to FAISS!")
 # Chat functionality
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
