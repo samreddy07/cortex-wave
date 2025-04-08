@@ -11,19 +11,18 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT
 AZURE_OPENAI_COMPLETION_DEPLOYMENT = os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-4o-mini")
 FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
-
 # === Azure OpenAI Clients ===
 # Initialize Azure OpenAI client for embeddings
 client = AzureOpenAI(
-  api_key=AZURE_OPENAI_KEY,
-  api_version="2024-02-01",
-  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
+   api_key=AZURE_OPENAI_KEY,
+   api_version="2024-02-01",
+   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
 )
 # Initialize Azure OpenAI client for chat completions
 chat_client = AzureOpenAI(
-  api_key=AZURE_OPENAI_KEY,
-  api_version="2024-02-01",
-  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+   api_key=AZURE_OPENAI_KEY,
+   api_version="2024-02-01",
+   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
 )
 # === FAISS Store ===
 class FAISSStore:
@@ -101,7 +100,7 @@ with st.sidebar:
    if st.button("🔄 Reset All"):
        st.session_state.faiss_store.clear()
        st.session_state.clear()
-       st.rerun()
+       st.experimental_rerun()
    uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
@@ -114,24 +113,29 @@ with st.sidebar:
 # Chat functionality
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
-# st.header("Ask me anything about the PDF or Wiki")
+# Chat header and input
 user_input = st.chat_input("Type your message here...")
 if user_input:
    st.session_state.chat_history.append({"role": "user", "content": user_input})
    with st.spinner("Thinking..."):
        query_embedding = get_embedding(user_input)
        relevant_chunks = st.session_state.faiss_store.search(query_embedding, top_k=3)
-       context = "\n".join(relevant_chunks)
-       messages = [
-           {"role": "system", "content": "You are a helpful assistant answering based on provided context."},
-           {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {user_input}"}
-       ]
-       response = chat_client.chat.completions.create(
-           model=AZURE_OPENAI_COMPLETION_DEPLOYMENT,
-           messages=messages,
-           temperature=0.3
-       )
-       answer = response.choices[0].message.content
+       if relevant_chunks:
+           # Build context from retrieved chunks
+           context = "\n".join(relevant_chunks)
+           messages = [
+               {"role": "system", "content": "You are a helpful assistant answering based on provided context."},
+               {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {user_input}"}
+           ]
+           response = chat_client.chat.completions.create(
+               model=AZURE_OPENAI_COMPLETION_DEPLOYMENT,
+               messages=messages,
+               temperature=0.3
+           )
+           answer = response.choices[0].message.content
+       else:
+           # No relevant information found in the document
+           answer = "No relevant information was found in the document. Please check your document or ask another question."
        st.session_state.chat_history.append({"role": "assistant", "content": answer})
 # Show chat history
 for msg in st.session_state.chat_history:
