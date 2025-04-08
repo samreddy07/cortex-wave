@@ -82,7 +82,7 @@ with st.sidebar:
    if st.button("🔄 Reset All"):
        st.session_state.faiss_store.clear()
        st.session_state.clear()
-       st.st.rerun
+       st.st.rerun()
    uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
