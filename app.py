@@ -91,7 +91,7 @@ def get_embedding(text):
    return response.data[0].embedding
 # === Streamlit App ===
 st.set_page_config(page_title="Cortex Waves", layout="wide")
-st.title("Cortex Waves: ChatBOT for Wiki and Document Exploration")
+st.header("Cortex Waves: ChatBOT for Wiki and Document Exploration")
 # FAISS init
 if "faiss_store" not in st.session_state:
    st.session_state.faiss_store = FAISSStore()
@@ -114,8 +114,8 @@ with st.sidebar:
 # Chat functionality
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
-st.header("Ask me anything about the PDF or Wiki")
-user_input = st.chat_input("Your question...")
+# st.header("Ask me anything about the PDF or Wiki")
+user_input = st.chat_input("Type your message here...")
 if user_input:
    st.session_state.chat_history.append({"role": "user", "content": user_input})
    with st.spinner("Thinking..."):
