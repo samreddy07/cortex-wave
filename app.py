@@ -103,15 +103,15 @@ with st.sidebar:
     st.title('🦙💬 Cortex Waves Chatbot')
     st.write('This chatbot is created using the open-source Faiss LLM model from Meta.')
     st.subheader('Upload PDF')
-   uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
-   if uploaded_file and not st.session_state.get("pdf_processed", False):
-       with st.spinner("Processing PDF..."):
-           text = extract_text_from_pdf(uploaded_file)
-           chunks = chunk_text(text)
-           embeddings = [get_embedding(chunk) for chunk in chunks]
-           st.session_state.faiss_store.add_embeddings(chunks, embeddings)
-           st.session_state.pdf_processed = True
-           st.success("✅ PDF processed and added to FAISS!")
+    uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
+    if uploaded_file and not st.session_state.get("pdf_processed", False):
+        with st.spinner("Processing PDF..."):
+            text = extract_text_from_pdf(uploaded_file)
+            chunks = chunk_text(text)
+            embeddings = [get_embedding(chunk) for chunk in chunks]
+            st.session_state.faiss_store.add_embeddings(chunks, embeddings)
+            st.session_state.pdf_processed = True
+            st.success("✅ PDF processed and added to FAISS!")
     st.markdown('📖 Learn how to build this app in this [blog](https://blog.streamlit.io/how-to-build-a-llama-2-chatbot/)!')
 
 # Store LLM generated responses
