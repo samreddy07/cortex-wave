@@ -79,10 +79,6 @@ st.title("📄 PDF Q&A Chatbot using FAISS + Azure OpenAI")
 # === Sidebar: PDF Upload & Reset ===
 with st.sidebar:
    st.header("PDF Control")
-   if st.button("🔄 Reset All"):
-       st.session_state.faiss_store.clear()
-       st.session_state.clear()
-       st.rerun()
    uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
@@ -92,6 +88,10 @@ with st.sidebar:
            st.session_state.faiss_store.add_embeddings(chunks, embeddings)
            st.session_state.pdf_processed = True
            st.success("✅ PDF processed and stored!")
+   if st.button("🔄 Reset All"):
+       st.session_state.faiss_store.clear()
+       st.session_state.clear()
+       st.rerun()
 # === Initialize Chat History ===
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
