@@ -104,7 +104,7 @@ def chunk_text(text, max_tokens=200):
 def get_embedding(text):
    response = client.embeddings.create(
        input=text,
-       model=embedding_model
+       model=AZURE_OPENAI_EMBEDDING_DEPLOYMENT
    )
    return response.data[0].embedding
 # === Streamlit App ===
