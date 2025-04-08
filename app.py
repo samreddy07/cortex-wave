@@ -4,6 +4,8 @@ import numpy as np
 import json
 import os
 import PyPDF2
+import requests
+from bs4 import BeautifulSoup
 from openai import AzureOpenAI  # Azure SDK
 # === CONFIGURATION ===
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "85015946c55b4763bcc88fc4db9071dd")
@@ -60,13 +62,30 @@ class FAISSStore:
 # Initialize FAISS
 if "faiss_store" not in st.session_state:
    st.session_state.faiss_store = FAISSStore()
-# === Utilities ===
+# === PDF PROCESSOR ===
 def extract_text_from_pdf(pdf_file):
    text = ""
    pdf_reader = PyPDF2.PdfReader(pdf_file)
    for page in pdf_reader.pages:
        text += page.extract_text() + "\n"
    return text
+# === WIKIPEDIA PROCESSOR ===
+def extract_text_from_wikipedia(url):
+   """Extracts text from a Wikipedia page given its URL."""
+   try:
+       response = requests.get(url)
+       response.raise_for_status()
+       soup = BeautifulSoup(response.text, "html.parser")
+       # Remove unnecessary elements like scripts and styles
+       for element in soup(["script", "style"]):
+           element.decompose()
+       text = soup.get_text(separator="\n")
+       # Clean and normalize the text
+       lines = [line.strip() for line in text.splitlines() if line.strip()]
+       return "\n".join(lines)
+   except Exception as e:
+       st.error(f"Error fetching Wikipedia content: {e}")
+       return ""
 def get_embedding(text):
    response = client.embeddings.create(
        input=text,
@@ -79,6 +98,7 @@ st.set_page_config(page_title="Cortex Wave", layout="wide")
 # === Sidebar: PDF Upload & Reset ===
 with st.sidebar:
    st.header("Data store")
+   # PDF Uploader
    uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
@@ -88,6 +108,17 @@ with st.sidebar:
            st.session_state.faiss_store.add_embeddings(chunks, embeddings)
            st.session_state.pdf_processed = True
            st.success("✅ PDF processed and stored!")
+    # Wikipedia URL input
+   wiki_url = st.text_input("Enter Wikipedia URL")
+   if wiki_url and not st.session_state.get("wiki_processed", False):
+       with st.spinner("🔍 Processing Wikipedia content..."):
+           wiki_text = extract_text_from_wikipedia(wiki_url)
+           if wiki_text:
+               wiki_chunks = [chunk for chunk in wiki_text.split("\n") if chunk.strip()]
+               wiki_embeddings = [get_embedding(chunk) for chunk in wiki_chunks]
+               faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
+               st.session_state.wiki_processed = True
+               st.success("✅ Wikipedia content processed and stored in FAISS!")
 # === Initialize Chat History ===
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
