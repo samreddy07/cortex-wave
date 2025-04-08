@@ -1,7 +1,7 @@
 streamlit
 PyPDF2
-beautifulsoup4
+sentence-transformers
 openai
 azure-core
 faiss-cpu
-requests
+Wikipedia-API
