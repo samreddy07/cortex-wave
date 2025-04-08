@@ -15,7 +15,7 @@ FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
 MODEL_NAME = "all-MiniLM-L6-v2"
 # === Load embedding model ===
-@st.cache_resource
+# @st.cache_resource
 def load_model():
    return SentenceTransformer(MODEL_NAME)
 model = load_model()
