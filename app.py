@@ -9,7 +9,10 @@ from bs4 import BeautifulSoup
 from openai import AzureOpenAI  # Import AzureOpenAI SDK
 # === CONFIGURATION ===
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "85015946c55b4763bcc88fc4db9071dd")
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01")
+AZURE_OPENAI_ENDPOINT = os.getenv(
+   "AZURE_OPENAI_ENDPOINT",
+   "https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+)
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "ada-002")
 AZURE_OPENAI_COMPLETION_DEPLOYMENT = os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-4o-mini")
 FAISS_INDEX_PATH = "faiss_index.bin"
@@ -97,8 +100,8 @@ def get_embedding(text):
    )
    return response.data[0].embedding
 # === STREAMLIT UI ===
-st.set_page_config(page_title="PDF & Wikipedia Q&A Bot", layout="wide")
-st.title("📄 PDF & Wikipedia Q&A Chatbot using FAISS and Azure OpenAI")
+st.set_page_config(page_title="Cortex Wave", layout="wide")
+st.title("Cortex Wave")
 with st.sidebar:
    st.header("Data Input Options")
    # PDF Uploader
@@ -106,7 +109,6 @@ with st.sidebar:
    if uploaded_file:
        with st.spinner("🔍 Processing PDF..."):
            pdf_text = extract_text_from_pdf(uploaded_file)
-           # Simple chunking by splitting on new lines (this can be improved)
            pdf_chunks = [chunk for chunk in pdf_text.split("\n") if chunk.strip()]
            pdf_embeddings = [get_embedding(chunk) for chunk in pdf_chunks]
            faiss_store.add_embeddings(pdf_chunks, pdf_embeddings)
@@ -117,19 +119,23 @@ with st.sidebar:
        with st.spinner("🔍 Processing Wikipedia content..."):
            wiki_text = extract_text_from_wikipedia(wiki_url)
            if wiki_text:
-               # Simple chunking by splitting on new lines
                wiki_chunks = [chunk for chunk in wiki_text.split("\n") if chunk.strip()]
                wiki_embeddings = [get_embedding(chunk) for chunk in wiki_chunks]
                faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
                st.success("✅ Wikipedia content processed and stored in FAISS!")
-# Initialize session state for chat history if not already set
-if "chat_history" not in st.session_state:
-   st.session_state.chat_history = []
-# Chat interface
-st.header("Chat with your Data")
+   # --- NEW FEATURE: Wikipedia Link Generator ---
+   st.subheader("Generate Wikipedia Link")
+   wiki_link_input = st.text_input("Enter text to generate a Wikipedia link")
+   if wiki_link_input:
+       # Format input by replacing spaces with underscores for the Wikipedia URL
+       generated_link = "https://en.wikipedia.org/wiki/" + wiki_link_input.strip().replace(" ", "_")
+       st.markdown(f"[Your Wikipedia Link]({generated_link})")
+# Chat interface (header removed as requested)
 user_input = st.chat_input("Ask a question:")
 if user_input:
-   # Append user message to chat history
+   # Append user message to chat history stored in session state
+   if "chat_history" not in st.session_state:
+       st.session_state.chat_history = []
    st.session_state.chat_history.append({"role": "user", "content": user_input})
    with st.spinner("🤖 Fetching answer..."):
        # Get query embedding from user question
@@ -148,11 +154,11 @@ if user_input:
            temperature=0.3,
        )
        answer = response.choices[0].message.content
-       # Append assistant response to chat history
        st.session_state.chat_history.append({"role": "assistant", "content": answer})
 # Display chat history using chat-like messages
-for msg in st.session_state.chat_history:
-   if msg["role"] == "assistant":
-       st.chat_message("assistant").write(msg["content"])
-   else:
-       st.chat_message("user").write(msg["content"])
+if "chat_history" in st.session_state:
+   for msg in st.session_state.chat_history:
+       if msg["role"] == "assistant":
+           st.chat_message("assistant").write(msg["content"])
+       else:
+           st.chat_message("user").write(msg["content"])
