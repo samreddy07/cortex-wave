@@ -1,7 +1,6 @@
 streamlit
 PyPDF2
 beautifulsoup4
-altair==4.1.0
 openai
 azure-core
 faiss-cpu
