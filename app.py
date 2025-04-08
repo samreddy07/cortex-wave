@@ -6,7 +6,7 @@ import os
 import PyPDF2
 import requests
 from bs4 import BeautifulSoup
-from openai import AzureOpenAI  # Azure SDK
+from openai import AzureOpenAI
 # === CONFIGURATION ===
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "85015946c55b4763bcc88fc4db9071dd")
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "ada-002")
@@ -17,13 +17,12 @@ FAISS_METADATA_PATH = "faiss_metadata.json"
 client = AzureOpenAI(
    api_key=AZURE_OPENAI_KEY,
    api_version="2024-02-01",
-   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
+   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net"
 )
-chat_client = AzureOpenAI(
-   api_key=AZURE_OPENAI_KEY,
-   api_version="2024-02-01",
-   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
-)
+# Embedding endpoint
+embedding_model = AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+# Completion (chat) endpoint
+chat_client = client  # Reusing the same client
 # === FAISS Store ===
 class FAISSStore:
    def __init__(self, embedding_dim=1536):
@@ -59,96 +58,107 @@ class FAISSStore:
            os.remove(FAISS_INDEX_PATH)
        if os.path.exists(FAISS_METADATA_PATH):
            os.remove(FAISS_METADATA_PATH)
-# Initialize FAISS
-if "faiss_store" not in st.session_state:
-   st.session_state.faiss_store = FAISSStore()
-# === PDF PROCESSOR ===
+# === Utilities ===
 def extract_text_from_pdf(pdf_file):
    text = ""
    pdf_reader = PyPDF2.PdfReader(pdf_file)
    for page in pdf_reader.pages:
-       text += page.extract_text() + "\n"
+       page_text = page.extract_text()
+       if page_text:
+           text += page_text + "\n"
    return text
-# === WIKIPEDIA PROCESSOR ===
 def extract_text_from_wikipedia(url):
-   """Extracts text from a Wikipedia page given its URL."""
+   """Extract clean text content from Wikipedia article body."""
    try:
        response = requests.get(url)
        response.raise_for_status()
        soup = BeautifulSoup(response.text, "html.parser")
-       # Remove unnecessary elements like scripts and styles
-       for element in soup(["script", "style"]):
-           element.decompose()
-       text = soup.get_text(separator="\n")
-       # Clean and normalize the text
-       lines = [line.strip() for line in text.splitlines() if line.strip()]
-       return "\n".join(lines)
+       # Remove unwanted tags
+       for tag in soup(["script", "style", "sup", "table", "img"]):
+           tag.decompose()
+       # Focus only on article content
+       content_div = soup.find("div", {"id": "mw-content-text"})
+       paragraphs = content_div.find_all("p") if content_div else []
+       clean_paragraphs = [p.get_text().strip() for p in paragraphs if p.get_text().strip()]
+       return "\n".join(clean_paragraphs)
    except Exception as e:
-       st.error(f"Error fetching Wikipedia content: {e}")
+       st.error(f"Error extracting Wikipedia content: {e}")
        return ""
+def chunk_text(text, max_tokens=200):
+   """Chunk text into smaller parts for better embedding quality."""
+   paragraphs = text.split("\n")
+   chunks = []
+   current_chunk = ""
+   for paragraph in paragraphs:
+       if len(current_chunk) + len(paragraph) < max_tokens:
+           current_chunk += paragraph + " "
+       else:
+           chunks.append(current_chunk.strip())
+           current_chunk = paragraph + " "
+   if current_chunk:
+       chunks.append(current_chunk.strip())
+   return chunks
 def get_embedding(text):
    response = client.embeddings.create(
        input=text,
-       model=AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+       model=embedding_model
    )
    return response.data[0].embedding
-# === Streamlit UI ===
+# === Streamlit App ===
 st.set_page_config(page_title="Cortex Wave", layout="wide")
-# st.title("Cortex Wave: AI for Wiki and Document Exploration")
-# === Sidebar: PDF Upload & Reset ===
+st.title("Cortex Wave: AI for Wiki and Document Exploration")
+# FAISS init
+if "faiss_store" not in st.session_state:
+   st.session_state.faiss_store = FAISSStore()
+# Sidebar
 with st.sidebar:
-   st.header("Data store")
+   st.header("Data Loader")
    if st.button("🔄 Reset All"):
        st.session_state.faiss_store.clear()
        st.session_state.clear()
        st.rerun()
-   # PDF Uploader
-   uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
+   uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
            text = extract_text_from_pdf(uploaded_file)
-           chunks = [chunk.strip() for chunk in text.split("\n") if chunk.strip()]
+           chunks = chunk_text(text)
            embeddings = [get_embedding(chunk) for chunk in chunks]
            st.session_state.faiss_store.add_embeddings(chunks, embeddings)
            st.session_state.pdf_processed = True
-           st.success("✅ PDF processed and stored!")
-    # Wikipedia URL input
-   wiki_url = st.text_input("Enter Wikipedia URL")
+           st.success("✅ PDF processed and added to FAISS!")
+   wiki_url = st.text_input("Wikipedia URL")
    if wiki_url and not st.session_state.get("wiki_processed", False):
-       with st.spinner("🔍 Processing Wikipedia content..."):
+       with st.spinner("Processing Wikipedia..."):
            wiki_text = extract_text_from_wikipedia(wiki_url)
            if wiki_text:
-               wiki_chunks = [chunk for chunk in wiki_text.split("\n") if chunk.strip()]
+               wiki_chunks = chunk_text(wiki_text)
                wiki_embeddings = [get_embedding(chunk) for chunk in wiki_chunks]
                st.session_state.faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
                st.session_state.wiki_processed = True
-               st.success("✅ Wikipedia content processed and stored in FAISS!")
-# === Initialize Chat History ===
+               st.success("✅ Wikipedia content added to FAISS!")
+# Chat functionality
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
-# === Chat Input ===
-st.header("Cortex Wave")
-user_input = st.chat_input("Ask something about the PDF and wiki...")
+st.header("Ask me anything about the PDF or Wiki")
+user_input = st.chat_input("Your question...")
 if user_input:
    st.session_state.chat_history.append({"role": "user", "content": user_input})
-   with st.spinner("Generating answer..."):
+   with st.spinner("Thinking..."):
        query_embedding = get_embedding(user_input)
        relevant_chunks = st.session_state.faiss_store.search(query_embedding, top_k=3)
        context = "\n".join(relevant_chunks)
        messages = [
-           {"role": "system", "content": "You are a helpful assistant."},
-           {"role": "user", "content": f"Context: {context}\n\nQuestion: {user_input}"}
+           {"role": "system", "content": "You are a helpful assistant answering based on provided context."},
+           {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {user_input}"}
        ]
        response = chat_client.chat.completions.create(
            model=AZURE_OPENAI_COMPLETION_DEPLOYMENT,
            messages=messages,
-           temperature=0.3,
+           temperature=0.3
        )
        answer = response.choices[0].message.content
        st.session_state.chat_history.append({"role": "assistant", "content": answer})
-# === Display Chat History ===
+# Show chat history
 for msg in st.session_state.chat_history:
-   if msg["role"] == "assistant":
-       st.chat_message("assistant").write(msg["content"])
-   else:
-       st.chat_message("user").write(msg["content"])
+   with st.chat_message(msg["role"]):
+       st.markdown(msg["content"])
