@@ -4,6 +4,8 @@ import numpy as np
 import json
 import os
 import PyPDF2
+import requests
+from bs4 import BeautifulSoup
 from openai import AzureOpenAI  # Import AzureOpenAI SDK
 # === CONFIGURATION ===
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "85015946c55b4763bcc88fc4db9071dd")
@@ -14,15 +16,15 @@ FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
 # Initialize Azure OpenAI client for embeddings
 client = AzureOpenAI(
-  api_key=AZURE_OPENAI_KEY,
-  api_version="2024-02-01",
-  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
+   api_key=AZURE_OPENAI_KEY,
+   api_version="2024-02-01",
+   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
 )
 # Initialize Azure OpenAI client for chat completions
 chat_client = AzureOpenAI(
-  api_key=AZURE_OPENAI_KEY,
-  api_version="2024-02-01",
-  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+   api_key=AZURE_OPENAI_KEY,
+   api_version="2024-02-01",
+   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
 )
 # === FAISS STORE ===
 class FAISSStore:
@@ -65,8 +67,27 @@ def extract_text_from_pdf(pdf_file):
    text = ""
    pdf_reader = PyPDF2.PdfReader(pdf_file)
    for page in pdf_reader.pages:
-       text += page.extract_text() + "\n"
+       page_text = page.extract_text()
+       if page_text:
+           text += page_text + "\n"
    return text
+# === WIKIPEDIA PROCESSOR ===
+def extract_text_from_wikipedia(url):
+   """Extracts text from a Wikipedia page given its URL."""
+   try:
+       response = requests.get(url)
+       response.raise_for_status()
+       soup = BeautifulSoup(response.text, "html.parser")
+       # Remove unnecessary elements like scripts and styles
+       for element in soup(["script", "style"]):
+           element.decompose()
+       text = soup.get_text(separator="\n")
+       # Clean and normalize the text
+       lines = [line.strip() for line in text.splitlines() if line.strip()]
+       return "\n".join(lines)
+   except Exception as e:
+       st.error(f"Error fetching Wikipedia content: {e}")
+       return ""
 # === EMBEDDING FUNCTION ===
 def get_embedding(text):
    """Generates embeddings using Azure OpenAI."""
@@ -76,38 +97,51 @@ def get_embedding(text):
    )
    return response.data[0].embedding
 # === STREAMLIT UI ===
-st.set_page_config(page_title="PDF Q&A Bot", layout="wide")
-st.title("📄 PDF Q&A Chatbot using FAISS and Azure OpenAI")
-# Move PDF uploader to the sidebar
+st.set_page_config(page_title="PDF & Wikipedia Q&A Bot", layout="wide")
+st.title("📄 PDF & Wikipedia Q&A Chatbot using FAISS and Azure OpenAI")
 with st.sidebar:
-   st.header("Upload PDF")
+   st.header("Data Input Options")
+   # PDF Uploader
    uploaded_file = st.file_uploader("Select a PDF file", type=["pdf"])
    if uploaded_file:
        with st.spinner("🔍 Processing PDF..."):
-           text = extract_text_from_pdf(uploaded_file)
+           pdf_text = extract_text_from_pdf(uploaded_file)
            # Simple chunking by splitting on new lines (this can be improved)
-           chunks = text.split("\n")
-           embeddings = [get_embedding(chunk) for chunk in chunks if chunk.strip()]
-           faiss_store.add_embeddings(chunks, embeddings)
+           pdf_chunks = [chunk for chunk in pdf_text.split("\n") if chunk.strip()]
+           pdf_embeddings = [get_embedding(chunk) for chunk in pdf_chunks]
+           faiss_store.add_embeddings(pdf_chunks, pdf_embeddings)
            st.success("✅ PDF processed and stored in FAISS!")
+   # Wikipedia URL input
+   wiki_url = st.text_input("Enter Wikipedia URL (optional)")
+   if wiki_url:
+       with st.spinner("🔍 Processing Wikipedia content..."):
+           wiki_text = extract_text_from_wikipedia(wiki_url)
+           if wiki_text:
+               # Simple chunking by splitting on new lines
+               wiki_chunks = [chunk for chunk in wiki_text.split("\n") if chunk.strip()]
+               wiki_embeddings = [get_embedding(chunk) for chunk in wiki_chunks]
+               faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
+               st.success("✅ Wikipedia content processed and stored in FAISS!")
 # Initialize session state for chat history if not already set
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
-# Chat interface using ChatGPT-like UI components
-st.header("Chat with your PDF")
+# Chat interface
+st.header("Chat with your Data")
 user_input = st.chat_input("Ask a question:")
 if user_input:
    # Append user message to chat history
    st.session_state.chat_history.append({"role": "user", "content": user_input})
-   # Process the query
    with st.spinner("🤖 Fetching answer..."):
+       # Get query embedding from user question
        query_embedding = get_embedding(user_input)
+       # Search for the most relevant text chunks in FAISS
        relevant_chunks = faiss_store.search(query_embedding, top_k=3)
        context = "\n".join(relevant_chunks)
        messages = [
            {"role": "system", "content": "You are a helpful assistant."},
            {"role": "user", "content": f"Context: {context}\n\nQuestion: {user_input}"}
        ]
+       # Call chat completion API using Azure OpenAI
        response = chat_client.chat.completions.create(
            model=AZURE_OPENAI_COMPLETION_DEPLOYMENT,
            messages=messages,
