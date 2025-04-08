@@ -14,13 +14,18 @@ AZURE_OPENAI_COMPLETION_DEPLOYMENT = os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYME
 FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
 # === Azure OpenAI Clients ===
+# Initialize Azure OpenAI client for embeddings
 client = AzureOpenAI(
-   api_key=AZURE_OPENAI_KEY,
-   api_version="2024-02-01",
-   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net"
+  api_key=AZURE_OPENAI_KEY,
+  api_version="2024-02-01",
+  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/ada-002/embeddings?api-version=2024-02-01"
 )
-# Embedding endpoint
-embedding_model = AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+# Initialize Azure OpenAI client for chat completions
+chat_client = AzureOpenAI(
+  api_key=AZURE_OPENAI_KEY,
+  api_version="2024-02-01",
+  azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+)
 # Completion (chat) endpoint
 chat_client = client  # Reusing the same client
 # === FAISS Store ===
