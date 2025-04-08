@@ -98,6 +98,10 @@ st.set_page_config(page_title="Cortex Wave", layout="wide")
 # === Sidebar: PDF Upload & Reset ===
 with st.sidebar:
    st.header("Data store")
+   if st.button("🔄 Reset All"):
+       st.session_state.faiss_store.clear()
+       st.session_state.clear()
+       st.rerun()
    # PDF Uploader
    uploaded_file = st.file_uploader("Upload a PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
@@ -119,10 +123,6 @@ with st.sidebar:
                st.session_state.faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
                st.session_state.wiki_processed = True
                st.success("✅ Wikipedia content processed and stored in FAISS!")
-   if st.button("🔄 Reset All"):
-       st.session_state.faiss_store.clear()
-       st.session_state.clear()
-       st.rerun()
 # === Initialize Chat History ===
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
