@@ -92,7 +92,7 @@ with st.sidebar:
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
 # === Chat Input ===
-st.header("Cortex Wave: AI for Wiki and Document Exploration")
+st.header("Cortex Wave")
 user_input = st.chat_input("Ask something about the PDF and wiki...")
 if user_input:
    st.session_state.chat_history.append({"role": "user", "content": user_input})
