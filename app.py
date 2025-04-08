@@ -26,8 +26,6 @@ chat_client = AzureOpenAI(
   api_version="2024-02-01",
   azure_endpoint="https://innovate-openai-api-mgt.azure-api.net/innovate-tracked/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
 )
-# Completion (chat) endpoint
-chat_client = client  # Reusing the same client
 # === FAISS Store ===
 class FAISSStore:
    def __init__(self, embedding_dim=1536):
