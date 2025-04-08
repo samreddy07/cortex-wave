@@ -69,6 +69,20 @@ def extract_text_from_pdf(pdf_file):
        if page_text:
            text += page_text + "\n"
    return text
+# === Helpers ===
+def chunk_text(text, max_length=500):
+   sentences = text.split(". ")
+   chunks = []
+   current_chunk = ""
+   for sentence in sentences:
+       if len(current_chunk) + len(sentence) < max_length:
+           current_chunk += sentence + ". "
+       else:
+           chunks.append(current_chunk.strip())
+           current_chunk = sentence + ". "
+   if current_chunk:
+       chunks.append(current_chunk.strip())
+   return chunks
 def get_embedding(text):
    response = client.embeddings.create(
        input=text,
