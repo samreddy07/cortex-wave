@@ -74,8 +74,8 @@ def get_embedding(text):
    )
    return response.data[0].embedding
 # === Streamlit UI ===
-st.set_page_config(page_title="PDF Q&A Bot", layout="wide")
-st.title("📄 PDF Q&A Chatbot using FAISS + Azure OpenAI")
+st.set_page_config(page_title="Cortex Wave", layout="wide")
+# st.title("Cortex Wave: AI for Wiki and Document Exploration")
 # === Sidebar: PDF Upload & Reset ===
 with st.sidebar:
    st.header("Vector data store creation")
@@ -92,8 +92,8 @@ with st.sidebar:
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
 # === Chat Input ===
-st.header("Chat with your PDF")
-user_input = st.chat_input("Ask something about the PDF...")
+st.header("Cortex Wave: AI for Wiki and Document Exploration")
+user_input = st.chat_input("Ask something about the PDF and wiki...")
 if user_input:
    st.session_state.chat_history.append({"role": "user", "content": user_input})
    with st.spinner("Generating answer..."):
