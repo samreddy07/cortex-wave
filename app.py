@@ -119,6 +119,10 @@ with st.sidebar:
                st.session_state.faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
                st.session_state.wiki_processed = True
                st.success("✅ Wikipedia content processed and stored in FAISS!")
+   if st.button("🔄 Reset All"):
+       st.session_state.faiss_store.clear()
+       st.session_state.clear()
+       st.rerun()
 # === Initialize Chat History ===
 if "chat_history" not in st.session_state:
    st.session_state.chat_history = []
