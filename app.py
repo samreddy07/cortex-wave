@@ -116,7 +116,7 @@ with st.sidebar:
            if wiki_text:
                wiki_chunks = [chunk for chunk in wiki_text.split("\n") if chunk.strip()]
                wiki_embeddings = [get_embedding(chunk) for chunk in wiki_chunks]
-               faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
+               st.session_state.faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
                st.session_state.wiki_processed = True
                st.success("✅ Wikipedia content processed and stored in FAISS!")
 # === Initialize Chat History ===
