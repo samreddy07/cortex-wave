@@ -88,19 +88,21 @@ def get_embedding(text):
        model=AZURE_OPENAI_EMBEDDING_DEPLOYMENT
    )
    return response.data[0].embedding
-# === Streamlit App ===
-st.set_page_config(page_title="Cortex Waves", layout="wide")
-st.header("Cortex Waves")
 # FAISS init
 if "faiss_store" not in st.session_state:
    st.session_state.faiss_store = FAISSStore()
-# Sidebar
+# Show chat history
+for msg in st.session_state.chat_history:
+   with st.chat_message(msg["role"]):
+       st.markdown(msg["content"])
+# App title
+st.set_page_config(page_title="🦙💬 Cortex Waves")
+
+# Replicate Credentials
 with st.sidebar:
-   st.header("Data Source")
-   if st.button("🔄 Reset All"):
-       st.session_state.faiss_store.clear()
-       st.session_state.clear()
-       st.rerun()
+    st.title('🦙💬 Cortex Waves Chatbot')
+    st.write('This chatbot is created using the open-source Faiss LLM model from Meta.')
+    st.subheader('Upload PDF')
    uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
@@ -110,15 +112,24 @@ with st.sidebar:
            st.session_state.faiss_store.add_embeddings(chunks, embeddings)
            st.session_state.pdf_processed = True
            st.success("✅ PDF processed and added to FAISS!")
-# Chat functionality
-if "chat_history" not in st.session_state:
-   st.session_state.chat_history = []
-# Chat header and input
-user_input = st.chat_input("Type your message here...")
-if user_input:
-   st.session_state.chat_history.append({"role": "user", "content": user_input})
-   with st.spinner("Thinking..."):
-       query_embedding = get_embedding(user_input)
+    st.markdown('📖 Learn how to build this app in this [blog](https://blog.streamlit.io/how-to-build-a-llama-2-chatbot/)!')
+
+# Store LLM generated responses
+if "messages" not in st.session_state.keys():
+    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
+
+# Display or clear chat messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+def clear_chat_history():
+    st.session_state.faiss_store.clear()
+    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
+st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
+
+def generate_response(user_input):
+    query_embedding = get_embedding(user_input)
        relevant_chunks = st.session_state.faiss_store.search(query_embedding, top_k=3)
        if relevant_chunks:
            # Build context from retrieved chunks
@@ -137,7 +148,23 @@ if user_input:
            # No relevant information found in the document
            answer = "No relevant information was found in the document. Please check your document or ask another question."
        st.session_state.chat_history.append({"role": "assistant", "content": answer})
-# Show chat history
-for msg in st.session_state.chat_history:
-   with st.chat_message(msg["role"]):
-       st.markdown(msg["content"])
+    return answer
+# User-provided prompt
+if prompt := st.chat_input(disabled=not replicate_api):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.write(prompt)
+
+# Generate a new response if last message is not from assistant
+if st.session_state.messages[-1]["role"] != "assistant":
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            response = generate_response(prompt)
+            placeholder = st.empty()
+            full_response = ''
+            for item in response:
+                full_response += item
+                placeholder.markdown(full_response)
+            placeholder.markdown(full_response)
+    message = {"role": "assistant", "content": full_response}
+    st.session_state.messages.append(message)
