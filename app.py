@@ -1,11 +1,11 @@
 import streamlit as st
 import faiss
+import wikipediaapi
 import numpy as np
 import json
 import os
 import PyPDF2
-import requests
-from bs4 import BeautifulSoup
+from sentence_transformers import SentenceTransformer
 from openai import AzureOpenAI
 # === CONFIGURATION ===
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "85015946c55b4763bcc88fc4db9071dd")
@@ -13,6 +13,12 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT
 AZURE_OPENAI_COMPLETION_DEPLOYMENT = os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-4o-mini")
 FAISS_INDEX_PATH = "faiss_index.bin"
 FAISS_METADATA_PATH = "faiss_metadata.json"
+MODEL_NAME = "all-MiniLM-L6-v2"
+# === Load embedding model ===
+@st.cache_resource
+def load_model():
+   return SentenceTransformer(MODEL_NAME)
+model = load_model()
 # === Azure OpenAI Clients ===
 # Initialize Azure OpenAI client for embeddings
 client = AzureOpenAI(
@@ -70,37 +76,26 @@ def extract_text_from_pdf(pdf_file):
        if page_text:
            text += page_text + "\n"
    return text
-def extract_text_from_wikipedia(url):
-   """Extract clean text content from Wikipedia article body."""
-   try:
-       response = requests.get(url)
-       response.raise_for_status()
-       soup = BeautifulSoup(response.text, "html.parser")
-       # Remove unwanted tags
-       for tag in soup(["script", "style", "sup", "table", "img"]):
-           tag.decompose()
-       # Focus only on article content
-       content_div = soup.find("div", {"id": "mw-content-text"})
-       paragraphs = content_div.find_all("p") if content_div else []
-       clean_paragraphs = [p.get_text().strip() for p in paragraphs if p.get_text().strip()]
-       return "\n".join(clean_paragraphs)
-   except Exception as e:
-       st.error(f"Error extracting Wikipedia content: {e}")
-       return ""
-def chunk_text(text, max_tokens=200):
-   """Chunk text into smaller parts for better embedding quality."""
-   paragraphs = text.split("\n")
+# === Helpers ===
+def chunk_text(text, max_length=500):
+   sentences = text.split(". ")
    chunks = []
    current_chunk = ""
-   for paragraph in paragraphs:
-       if len(current_chunk) + len(paragraph) < max_tokens:
-           current_chunk += paragraph + " "
+   for sentence in sentences:
+       if len(current_chunk) + len(sentence) < max_length:
+           current_chunk += sentence + ". "
        else:
            chunks.append(current_chunk.strip())
-           current_chunk = paragraph + " "
+           current_chunk = sentence + ". "
    if current_chunk:
        chunks.append(current_chunk.strip())
    return chunks
+def fetch_wikipedia_content(title):
+   wiki_wiki = wikipediaapi.Wikipedia("en")
+   page = wiki_wiki.page(title)
+   if not page.exists():
+       return None
+   return page.text
 def get_embedding(text):
    response = client.embeddings.create(
        input=text,
@@ -132,10 +127,10 @@ with st.sidebar:
    wiki_url = st.text_input("Wikipedia URL")
    if wiki_url and not st.session_state.get("wiki_processed", False):
        with st.spinner("Processing Wikipedia..."):
-           wiki_text = extract_text_from_wikipedia(wiki_url)
+           wiki_text = fetch_wikipedia_content(wiki_url)
            if wiki_text:
                wiki_chunks = chunk_text(wiki_text)
-               wiki_embeddings = [get_embedding(chunk) for chunk in wiki_chunks]
+               wiki_embeddings = model.encode(wiki_chunks)
                st.session_state.faiss_store.add_embeddings(wiki_chunks, wiki_embeddings)
                st.session_state.wiki_processed = True
                st.success("✅ Wikipedia content added to FAISS!")
