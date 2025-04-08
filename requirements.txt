@@ -1,6 +1,6 @@
 streamlit
 PyPDF2
-db-sqlite3
+beautifulsoup4
 altair==4.1.0
 openai
 azure-core
