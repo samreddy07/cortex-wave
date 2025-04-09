@@ -106,7 +106,6 @@ for message in st.session_state.messages:
 with st.sidebar:
    st.title('🦙💬 Cortex Waves Chatbot')
    st.write('This chatbot is created using the open-source Faiss LLM model from Meta.')
-   st.subheader('Upload PDF')
    uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
@@ -119,6 +118,7 @@ with st.sidebar:
    st.markdown('📖 Learn how to build this app in this blog!')
    if st.sidebar.button('Clear Chat History'):
        st.session_state.faiss_store.clear()
+       st.rerun()
        st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 # === Response Generation ===
 def generate_response(user_input):
