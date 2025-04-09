@@ -118,6 +118,7 @@ with st.sidebar:
    st.markdown('📖 Learn how to build this app in this blog!')
    if st.sidebar.button('Clear Chat History'):
        st.session_state.faiss_store.clear()
+       st.session_state.clear()
        st.rerun()
        st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 # === Response Generation ===
