@@ -129,22 +129,23 @@ def clear_chat_history():
 st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
 
 def generate_response(user_input):
-    query_embedding = get_embedding(user_input)
-       relevant_chunks = st.session_state.faiss_store.search(query_embedding, top_k=3)
-       if relevant_chunks:
-           # Build context from retrieved chunks
-           context = "\n".join(relevant_chunks)
-           messages = [
+   query_embedding = get_embedding(user_input)
+   relevant_chunks = st.session_state.faiss_store.search(query_embedding, top_k=3)
+      if relevant_chunks:
+         # Build context from retrieved chunks
+         context = "\n".join(relevant_chunks)
+         messages = [
                {"role": "system", "content": "You are a helpful assistant answering based on provided context."},
                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {user_input}"}
            ]
-           response = chat_client.chat.completions.create(
+         response = chat_client.chat.completions.create(
                model=AZURE_OPENAI_COMPLETION_DEPLOYMENT,
                messages=messages,
                temperature=0.3
            )
-           answer = response.choices[0].message.content
+           nswer = response.choices[0].message.content
        else:
+          
            # No relevant information found in the document
            answer = "No relevant information was found in the document. Please check your document or ask another question."
        st.session_state.chat_history.append({"role": "assistant", "content": answer})
