@@ -109,7 +109,7 @@ for message in st.session_state.messages:
 # === Sidebar and PDF Upload Section ===
 with st.sidebar:
    st.title('💬 Cortex Waves Chatbot')
-   st.write('Cortex Waves: Chatbot for Wiki and User Document Exploration')
+   st.write('Cortex Waves: Chatbot for Wiki and User Guide Exploration')
    uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
@@ -137,7 +137,7 @@ def generate_response(user_input):
        )
        answer = response.choices[0].message.content
    else:
-       answer = "No relevant information was found in the document. Please check your document or ask another question."
+       answer = "No relevant information was found in the user document. Please check your document or ask another question."
    st.session_state.chat_history.append({"role": "assistant", "content": answer})
    return answer
 # === User Interaction with Chat Input ===
