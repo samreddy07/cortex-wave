@@ -6,7 +6,7 @@ import os
 import PyPDF2
 from openai import AzureOpenAI
 # === Set Page Configuration First ===
-st.set_page_config(page_title="🦙💬 Cortex Waves")
+st.set_page_config(page_title="💬 Cortex Waves")
 # === CONFIGURATION ===
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_KEY", "85015946c55b4763bcc88fc4db9071dd")
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "ada-002")
@@ -108,8 +108,8 @@ for message in st.session_state.messages:
        st.write(message["content"])
 # === Sidebar and PDF Upload Section ===
 with st.sidebar:
-   st.title('🦙💬 Cortex Waves Chatbot')
-   st.write('This chatbot is created using the open-source Faiss LLM model from Meta.')
+   st.title('💬 Cortex Waves Chatbot')
+   st.write('Cortex Wave: AI for Wiki and Document Exploration')
    uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
    if uploaded_file and not st.session_state.get("pdf_processed", False):
        with st.spinner("Processing PDF..."):
