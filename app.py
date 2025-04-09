@@ -81,6 +81,10 @@ def chunk_text(text, max_length=500):
    if current_chunk:
        chunks.append(current_chunk.strip())
    return chunks
+def clear_chat_history():
+    st.session_state.faiss_store.clear()
+    st.session_state.clear()
+    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
 def get_embedding(text):
    response = client.embeddings.create(
        input=text,
@@ -116,10 +120,6 @@ with st.sidebar:
            st.session_state.pdf_processed = True
            st.success("✅ PDF processed and added to FAISS!")
    st.markdown('📖 Learn how to build this app in this blog!')
-def clear_chat_history():
-    st.session_state.faiss_store.clear()
-    st.session_state.clear()
-    st.session_state.messages = [{"role": "assistant", "content": "How may I assist you today?"}]
    st.sidebar.button('Clear Chat History', on_click=clear_chat_history)
    # if st.sidebar.button('Clear Chat History'):
    #     st.session_state.faiss_store.clear()
